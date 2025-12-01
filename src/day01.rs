@@ -19,7 +19,7 @@ fn main() {
 
 #[cfg(feature = "part1")]
 fn part_1() {
-    // Took 33 minutes 2,24 seconds (including breaks of around 15 minutes because of cats)
+    // Took 33 minutes 2,24 seconds (excluding breaks of around 15 minutes because of cats)
     let count = number_of_times_dial_pointing_at_0_after_rotations(
         &mut Dial::new(50, 99).expect("Should be correct values"),
         &include_str!("../input/input.day01")
@@ -31,7 +31,7 @@ fn part_1() {
 
 #[cfg(feature = "part2")]
 fn part_2() {
-    // Took 11 minutes 7,26 seconds (again, including breaks of around 15 minutes because of cat)
+    // Took 11 minutes 7,26 seconds (again, excluding breaks of around 15 minutes because of cat)
     let count = number_of_time_dial_pointing_at_0_at_any_time(
         &mut Dial::new(50, 99).expect("Should be correct values"),
         &include_str!("../input/input.day01")
