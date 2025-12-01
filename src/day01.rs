@@ -1,12 +1,23 @@
 use std::cmp::Ordering;
 use std::num::ParseIntError;
 use std::str::FromStr;
+#[cfg(feature = "internal_timings")]
+use std::time::Instant;
 
 fn main() {
+    #[cfg(feature = "internal_timings")]
+    let start = Instant::now();
+    #[cfg(feature = "part1")]
     part_1();
+    #[cfg(feature = "part2")]
     part_2();
+    #[cfg(feature = "internal_timings")]
+    let end = Instant::now();
+    #[cfg(feature = "internal_timings")]
+    println!("duration: {:?}", end.duration_since(start));
 }
 
+#[cfg(feature = "part1")]
 fn part_1() {
     // Took 33 minutes 2,24 seconds (including breaks of around 15 minutes because of cats)
     let count = number_of_times_dial_pointing_at_0_after_rotations(
@@ -18,6 +29,7 @@ fn part_1() {
     println!("The answer to part 1 is: {count}");
 }
 
+#[cfg(feature = "part2")]
 fn part_2() {
     // Took 11 minutes 7,26 seconds (again, including breaks of around 15 minutes because of cat)
     let count = number_of_time_dial_pointing_at_0_at_any_time(
@@ -29,6 +41,7 @@ fn part_2() {
     println!("The answer to part 2 is: {count}");
 }
 
+#[cfg(feature = "part1")]
 fn number_of_times_dial_pointing_at_0_after_rotations(
     dial: &mut Dial,
     rotations: &Rotations,
@@ -43,6 +56,7 @@ fn number_of_times_dial_pointing_at_0_after_rotations(
     count
 }
 
+#[cfg(feature = "part2")]
 fn number_of_time_dial_pointing_at_0_at_any_time(dial: &mut Dial, rotations: &Rotations) -> u64 {
     let mut count = 0;
     for rotation in &rotations.0 {

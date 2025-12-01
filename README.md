@@ -17,8 +17,12 @@ Before running "Advent Of Code 2025" you need:
 - Rust Toolchain, see <https://rust-lang.org/tools/install/> (currently using `1.91.1`)
 
 Each day is its own binary and can be run like `cargo run --bin day01`.
+Running only a select part of the puzzle is achieved through features like
+`cargo run --bin day01 --no-default-features --features part1` or `part2`.
 
 For the full speed use `--release` after `cargo run` like `cargo run --release --bin day01`.
+
+Internal timings will be given when also adding the `internal_timings` feature, which is enabled on default.
 
 ---
 

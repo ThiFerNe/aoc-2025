@@ -13,5 +13,11 @@ publish = false
 name = "day01"
 path = "src/day01.rs"
 
+[features]
+default = ["part1", "part2", "internal_timings"]
+part1 = []
+part2 = []
+internal_timings = []
+
 [dependencies]
 thiserror = "2"
