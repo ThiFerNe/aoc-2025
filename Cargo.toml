@@ -1,0 +1,16 @@
+[package]
+name = "aoc-2025"
+version = "0.0.0"
+authors = ["ThiFerNe <thimo.f.neumann@gmail.com>"]
+edition = "2024"
+description = "My hand-crafted solutions to the Advent of Code 2025"
+readme = "README.md"
+repository = "https://github.com/ThiFerNe/aoc-2025"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "day01"
+path = "src/day01.rs"
+
+[dependencies]
