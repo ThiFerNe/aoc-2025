@@ -4,6 +4,7 @@ use std::str::FromStr;
 
 fn main() {
     part_1();
+    part_2();
 }
 
 fn part_1() {
@@ -17,6 +18,17 @@ fn part_1() {
     println!("The answer to part 1 is: {count}");
 }
 
+fn part_2() {
+    // Took 11 minutes 7,26 seconds (again, including breaks of around 15 minutes because of cat)
+    let count = number_of_time_dial_pointing_at_0_at_any_time(
+        &mut Dial::new(50, 99).expect("Should be correct values"),
+        &include_str!("../input/input.day01")
+            .parse()
+            .expect("Should parse fine"),
+    );
+    println!("The answer to part 2 is: {count}");
+}
+
 fn number_of_times_dial_pointing_at_0_after_rotations(
     dial: &mut Dial,
     rotations: &Rotations,
@@ -24,6 +36,18 @@ fn number_of_times_dial_pointing_at_0_after_rotations(
     let mut count = 0;
     for rotation in &rotations.0 {
         dial.apply(rotation);
+        if dial.pointing_at == 0 {
+            count += 1;
+        }
+    }
+    count
+}
+
+fn number_of_time_dial_pointing_at_0_at_any_time(dial: &mut Dial, rotations: &Rotations) -> u64 {
+    let mut count = 0;
+    for rotation in &rotations.0 {
+        let ran_over_zero = dial.apply(rotation);
+        count += ran_over_zero.0;
         if dial.pointing_at == 0 {
             count += 1;
         }
@@ -48,22 +72,36 @@ impl Dial {
             })
         }
     }
-    fn apply(&mut self, rotation: &Rotation) {
+    fn apply(&mut self, rotation: &Rotation) -> RanOverZero {
         let remaining_non_complete_rotations = rotation.distance % (self.maximum_value + 1);
+        let full_rotations = rotation.distance / (self.maximum_value + 1);
         match rotation.direction {
             Direction::Left => {
-                self.pointing_at = match remaining_non_complete_rotations.cmp(&self.pointing_at) {
-                    Ordering::Less => self.pointing_at - remaining_non_complete_rotations,
-                    Ordering::Equal => 0,
-                    Ordering::Greater => {
-                        (self.maximum_value + 1)
-                            - (remaining_non_complete_rotations - self.pointing_at)
-                    }
-                };
+                let (new_pointing_at, ran_over_zero) =
+                    match remaining_non_complete_rotations.cmp(&self.pointing_at) {
+                        Ordering::Less => (self.pointing_at - remaining_non_complete_rotations, 0),
+                        Ordering::Equal => (0, 0),
+                        Ordering::Greater => (
+                            (self.maximum_value + 1)
+                                - (remaining_non_complete_rotations - self.pointing_at),
+                            if self.pointing_at != 0 { 1 } else { 0 },
+                        ),
+                    };
+                self.pointing_at = new_pointing_at;
+                RanOverZero(full_rotations + ran_over_zero)
             }
             Direction::Right => {
-                self.pointing_at = (self.pointing_at + remaining_non_complete_rotations)
-                    % (self.maximum_value + 1);
+                let new_pointing_at = self.pointing_at + remaining_non_complete_rotations;
+                let (new_pointing_at, ran_over_zero) = if new_pointing_at > (self.maximum_value + 1)
+                {
+                    (new_pointing_at - (self.maximum_value + 1), 1)
+                } else if new_pointing_at == (self.maximum_value + 1) {
+                    (new_pointing_at - (self.maximum_value + 1), 0)
+                } else {
+                    (new_pointing_at, 0)
+                };
+                self.pointing_at = new_pointing_at;
+                RanOverZero(full_rotations + ran_over_zero)
             }
         }
     }
@@ -74,6 +112,9 @@ enum NewDialError {
     #[error("Failed to create Dial as ")]
     Invalid,
 }
+
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+struct RanOverZero(u64);
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 struct Rotations(Box<[Rotation]>);
@@ -185,5 +226,28 @@ L82";
 
         // Assert
         assert_eq!(count, 3)
+    }
+
+    #[test]
+    fn test_part_2() {
+        // Arrange
+        let input = "L68
+L30
+R48
+L5
+R60
+L55
+L1
+L99
+R14
+L82";
+        let mut dial = Dial::new(50, 99).expect("Should be correct values");
+
+        // Act
+        let rotations: Rotations = input.parse().expect("Should parse");
+        let count = number_of_time_dial_pointing_at_0_at_any_time(&mut dial, &rotations);
+
+        // Assert
+        assert_eq!(count, 6)
     }
 }
