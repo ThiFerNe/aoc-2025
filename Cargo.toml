@@ -14,3 +14,4 @@ name = "day01"
 path = "src/day01.rs"
 
 [dependencies]
+thiserror = "2"
