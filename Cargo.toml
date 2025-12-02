@@ -13,6 +13,10 @@ publish = false
 name = "day01"
 path = "src/day01.rs"
 
+[[bin]]
+name = "day02"
+path = "src/day02.rs"
+
 [features]
 default = ["part1", "part2", "internal_timings"]
 part1 = []
@@ -20,4 +24,5 @@ part2 = []
 internal_timings = []
 
 [dependencies]
+derive_more = { version = "2", features = ["display"] }
 thiserror = "2"
