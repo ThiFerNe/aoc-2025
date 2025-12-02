@@ -1,16 +1,34 @@
 use std::num::ParseIntError;
 use std::str::FromStr;
+#[cfg(feature = "internal_timings")]
+use std::time::Instant;
 
+#[cfg(feature = "part2")]
 use itertools::Itertools;
 
 fn main() {
+    #[cfg(feature = "internal_timings")]
+    let start = Instant::now();
+    #[cfg(any(feature = "part1", feature = "part2"))]
     let input = include_str!("../input/input.day02");
-    let part1 = part1(input);
-    println!("Solution to part 1: {part1}");
-    let part2 = part2(input);
-    println!("Solution to part 1: {part2}");
+    #[cfg(feature = "part1")]
+    {
+        let part1 = part1(input);
+        println!("Solution to part 1: {part1}");
+    }
+    #[cfg(feature = "part2")]
+    {
+        let part2 = part2(input);
+        println!("Solution to part 1: {part2}");
+    }
+    #[cfg(feature = "internal_timings")]
+    {
+        let end = Instant::now();
+        println!("duration: {:?}", end.duration_since(start));
+    }
 }
 
+#[cfg(feature = "part1")]
 fn part1(input: &str) -> u64 {
     // Took 58 minutes 48,25 seconds (excluding breaks of around 60 minutes because of coworkers)
     sum_of_all_invalid_ids(input.parse().expect("Should parse fine"), |id| {
@@ -27,6 +45,7 @@ fn part1(input: &str) -> u64 {
     })
 }
 
+#[cfg(feature = "part2")]
 fn part2(input: &str) -> u64 {
     // Took 22 minutes 21,32 seconds (excluding breaks of around 40 minutes because of coworkers)
     sum_of_all_invalid_ids(input.parse().expect("Should parse fine"), |id| {
