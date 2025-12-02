@@ -5,6 +5,9 @@ use std::time::Instant;
 
 #[cfg(feature = "part2")]
 use itertools::Itertools;
+use rayon::iter::{
+    IndexedParallelIterator, IntoParallelRefIterator, ParallelBridge, ParallelIterator,
+};
 
 fn main() {
     #[cfg(feature = "internal_timings")]
@@ -89,7 +92,7 @@ fn part2(input: &str) -> u64 {
 
 fn sum_of_all_invalid_ids<F>(ranges: IdRanges, invalid_predicate: F) -> u64
 where
-    F: Fn(&Id) -> bool + Copy,
+    F: Fn(&Id) -> bool + Copy + Send + Sync,
 {
     ranges.sum_by(invalid_predicate).expect("Should calculate")
 }
@@ -100,10 +103,10 @@ struct IdRanges(Box<[IdRange]>);
 impl IdRanges {
     fn sum_by<F>(&self, predicate: F) -> Result<u64, SumByIdRangesError>
     where
-        F: Fn(&Id) -> bool + Copy,
+        F: Fn(&Id) -> bool + Copy + Send + Sync,
     {
         self.0
-            .iter()
+            .par_iter()
             .enumerate()
             .map(|(index, range)| {
                 range
@@ -113,7 +116,8 @@ impl IdRanges {
                         source: error,
                     })
             })
-            .try_fold(0u64, |acc, val| val.map(|val| val + acc))
+            .try_fold(|| 0u64, |acc, val| val.map(|val| val + acc))
+            .try_reduce(|| 0, |left, right| Ok(left + right))
     }
 }
 
@@ -165,12 +169,13 @@ struct IdRange {
 impl IdRange {
     fn sum_by<F>(&self, predicate: F) -> Result<u64, SumByIdRangeError>
     where
-        F: Fn(&Id) -> bool,
+        F: Fn(&Id) -> bool + Send + Sync,
     {
         Ok(self
             .clone()
             .into_iter()
             .enumerate()
+            .par_bridge()
             .filter_map(|(index, current)| {
                 current
                     .map(|id| predicate(&id).then_some((index, id)))
