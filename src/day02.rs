@@ -1,47 +1,109 @@
 use std::num::ParseIntError;
 use std::str::FromStr;
 
+use itertools::Itertools;
+
 fn main() {
     let input = include_str!("../input/input.day02");
     let part1 = part1(input);
     println!("Solution to part 1: {part1}");
+    let part2 = part2(input);
+    println!("Solution to part 1: {part2}");
 }
 
 fn part1(input: &str) -> u64 {
     // Took 58 minutes 48,25 seconds (excluding breaks of around 60 minutes because of coworkers)
-    sum_of_all_invalid_ids(input.parse().expect("Should parse fine"))
+    sum_of_all_invalid_ids(input.parse().expect("Should parse fine"), |id| {
+        if id.0.starts_with('0') {
+            true
+        } else if id.0.len() > 1
+            && let Some((left, right)) = id.0.split_at_checked(id.0.len() / 2)
+            && left == right
+        {
+            true
+        } else {
+            false
+        }
+    })
 }
 
-fn sum_of_all_invalid_ids(ranges: IdRanges) -> u64 {
-    ranges.invalid_count().expect("Should calculate")
+fn part2(input: &str) -> u64 {
+    // Took 22 minutes 21,32 seconds (excluding breaks of around 40 minutes because of coworkers)
+    sum_of_all_invalid_ids(input.parse().expect("Should parse fine"), |id| {
+        if id.0.starts_with('0') {
+            return true;
+        }
+        enum Search {
+            None,
+            Searching(String),
+            FoundAtLeastTwice(String),
+            Failed,
+        }
+        (1..=id.0.len() / 2)
+            .filter(|chunk_size| (id.0.len() / chunk_size) * chunk_size == id.0.len())
+            .map(|chunk_size| {
+                id.0.chars()
+                    .chunks(chunk_size)
+                    .into_iter()
+                    .fold(Search::None, |acc, value| match acc {
+                        Search::None => Search::Searching(value.collect()),
+                        Search::Searching(current) => {
+                            if current == value.collect::<String>() {
+                                Search::FoundAtLeastTwice(current)
+                            } else {
+                                Search::Failed
+                            }
+                        }
+                        Search::FoundAtLeastTwice(current) => {
+                            if current == value.collect::<String>() {
+                                Search::FoundAtLeastTwice(current)
+                            } else {
+                                Search::Failed
+                            }
+                        }
+                        Search::Failed => Search::Failed,
+                    })
+            })
+            .any(|search| matches!(search, Search::FoundAtLeastTwice(_)))
+    })
+}
+
+fn sum_of_all_invalid_ids<F>(ranges: IdRanges, invalid_predicate: F) -> u64
+where
+    F: Fn(&Id) -> bool + Copy,
+{
+    ranges.sum_by(invalid_predicate).expect("Should calculate")
 }
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 struct IdRanges(Box<[IdRange]>);
 
 impl IdRanges {
-    fn invalid_count(&self) -> Result<u64, InvalidCountIdRangesError> {
+    fn sum_by<F>(&self, predicate: F) -> Result<u64, SumByIdRangesError>
+    where
+        F: Fn(&Id) -> bool + Copy,
+    {
         self.0
             .iter()
             .enumerate()
             .map(|(index, range)| {
-                range.invalid_count().map_err(|error| {
-                    InvalidCountIdRangesError::InvalidCountForRange {
+                range
+                    .sum_by(predicate)
+                    .map_err(|error| SumByIdRangesError::InvalidCountForRange {
                         index,
                         source: error,
-                    }
-                })
+                    })
             })
             .try_fold(0u64, |acc, val| val.map(|val| val + acc))
     }
 }
 
 #[derive(thiserror::Error, Debug)]
-enum InvalidCountIdRangesError {
+enum SumByIdRangesError {
     #[error("Failed to get invalid count of range at index '{index}': {source}")]
     InvalidCountForRange {
         index: usize,
-        source: InvalidCountIdRangeError,
+        source: SumByIdRangeError,
     },
 }
 
@@ -82,21 +144,24 @@ struct IdRange {
 }
 
 impl IdRange {
-    fn invalid_count(&self) -> Result<u64, InvalidCountIdRangeError> {
+    fn sum_by<F>(&self, predicate: F) -> Result<u64, SumByIdRangeError>
+    where
+        F: Fn(&Id) -> bool,
+    {
         Ok(self
             .clone()
             .into_iter()
             .enumerate()
             .filter_map(|(index, current)| {
                 current
-                    .map(|id| (!id.is_valid()).then_some((index, id)))
+                    .map(|id| predicate(&id).then_some((index, id)))
                     .transpose()
             })
             .collect::<Result<Vec<_>, _>>()?
             .into_iter()
             .map(|(index, id)| {
                 id.0.parse::<u64>()
-                    .map_err(|error| InvalidCountIdRangeError::Parse {
+                    .map_err(|error| SumByIdRangeError::Parse {
                         index,
                         source: error,
                     })
@@ -108,7 +173,7 @@ impl IdRange {
 }
 
 #[derive(thiserror::Error, Debug)]
-enum InvalidCountIdRangeError {
+enum SumByIdRangeError {
     #[error("Failed to iterate over id range: {0}")]
     Iterate(#[from] IterateIdRangeError),
     #[error("Failed to parse id at index '{index}': {source}")]
@@ -191,19 +256,6 @@ enum ParseIdRangeError {
 struct Id(String);
 
 impl Id {
-    fn is_valid(&self) -> bool {
-        if self.0.starts_with('0') {
-            false
-        } else if self.0.len() > 1
-            && let Some((left, right)) = self.0.split_at_checked(self.0.len() / 2)
-            && left == right
-        {
-            false
-        } else {
-            true
-        }
-    }
-
     fn next(&self) -> Result<Self, NextIdError> {
         Ok(Self(
             self.0
@@ -256,5 +308,17 @@ mod tests {
 
         // Assert
         assert_eq!(part1, 1227775554);
+    }
+
+    #[test]
+    fn test_part2() {
+        // Arrange
+        let input = "11-22,95-115,998-1012,1188511880-1188511890,222220-222224,1698522-1698528,446443-446449,38593856-38593862,565653-565659,824824821-824824827,2121212118-2121212124";
+
+        // Act
+        let part1 = part2(input);
+
+        // Assert
+        assert_eq!(part1, 4174379265);
     }
 }

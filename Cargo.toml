@@ -25,4 +25,5 @@ internal_timings = []
 
 [dependencies]
 derive_more = { version = "2", features = ["display"] }
+itertools = "0.14"
 thiserror = "2"
