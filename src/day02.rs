@@ -1,10 +1,9 @@
+use std::fmt::{Display, Formatter};
 use std::num::ParseIntError;
 use std::str::FromStr;
 #[cfg(feature = "internal_timings")]
 use std::time::Instant;
 
-#[cfg(feature = "part2")]
-use itertools::Itertools;
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelRefIterator, ParallelBridge, ParallelIterator,
 };
@@ -35,7 +34,7 @@ fn main() {
 fn part1(input: &str) -> u64 {
     // Took 58 minutes 48,25 seconds (excluding breaks of around 60 minutes because of coworkers)
     sum_of_all_invalid_ids(input.parse().expect("Should parse fine"), |id| {
-        if id.0.starts_with('0') {
+        if id.starts_with_zero() {
             true
         } else if id.0.len() > 1
             && let Some((left, right)) = id.0.split_at_checked(id.0.len() / 2)
@@ -52,41 +51,43 @@ fn part1(input: &str) -> u64 {
 fn part2(input: &str) -> u64 {
     // Took 22 minutes 21,32 seconds (excluding breaks of around 40 minutes because of coworkers)
     sum_of_all_invalid_ids(input.parse().expect("Should parse fine"), |id| {
-        if id.0.starts_with('0') {
+        if id.starts_with_zero() {
             return true;
         }
-        enum Search {
+        enum Search<'a> {
             None,
-            Searching(String),
-            FoundAtLeastTwice(String),
+            Searching(&'a [char]),
+            FoundAtLeastTwice(&'a [char]),
             Failed,
         }
-        (1..=id.0.len() / 2)
-            .filter(|chunk_size| (id.0.len() / chunk_size) * chunk_size == id.0.len())
-            .map(|chunk_size| {
-                id.0.chars()
-                    .chunks(chunk_size)
-                    .into_iter()
-                    .fold(Search::None, |acc, value| match acc {
-                        Search::None => Search::Searching(value.collect()),
-                        Search::Searching(current) => {
-                            if current == value.collect::<String>() {
-                                Search::FoundAtLeastTwice(current)
-                            } else {
-                                Search::Failed
-                            }
+        (1..=id.0.len() / 2).rev().any(|chunk_size| {
+            let result = (0..id.0.len())
+                .step_by(chunk_size)
+                .fold(Search::None, |acc, index| match acc {
+                    Search::None => {
+                        Search::Searching(&id.0[index..(index + chunk_size).min(id.0.len())])
+                    }
+                    Search::Searching(current) => {
+                        if current == &id.0[index..(index + chunk_size).min(id.0.len())] {
+                            Search::FoundAtLeastTwice(current)
+                        } else {
+                            Search::Failed
                         }
-                        Search::FoundAtLeastTwice(current) => {
-                            if current == value.collect::<String>() {
-                                Search::FoundAtLeastTwice(current)
-                            } else {
-                                Search::Failed
-                            }
+                    }
+                    Search::FoundAtLeastTwice(current) => {
+                        if current == &id.0[index..(index + chunk_size).min(id.0.len())] {
+                            Search::FoundAtLeastTwice(current)
+                        } else {
+                            Search::Failed
                         }
-                        Search::Failed => Search::Failed,
-                    })
-            })
-            .any(|search| matches!(search, Search::FoundAtLeastTwice(_)))
+                    }
+                    Search::Failed => Search::Failed,
+                });
+            match result {
+                Search::None | Search::Searching(_) | Search::Failed => false,
+                Search::FoundAtLeastTwice(_) => true,
+            }
+        })
     })
 }
 
@@ -111,7 +112,7 @@ impl IdRanges {
             .map(|(index, range)| {
                 range
                     .sum_by(predicate)
-                    .map_err(|error| SumByIdRangesError::InvalidCountForRange {
+                    .map_err(|error| SumByIdRangesError::SumByForRange {
                         index,
                         source: error,
                     })
@@ -123,8 +124,8 @@ impl IdRanges {
 
 #[derive(thiserror::Error, Debug)]
 enum SumByIdRangesError {
-    #[error("Failed to get invalid count of range at index '{index}': {source}")]
-    InvalidCountForRange {
+    #[error("Failed to get sum by of range at index '{index}': {source}")]
+    SumByForRange {
         index: usize,
         source: SumByIdRangeError,
     },
@@ -174,24 +175,11 @@ impl IdRange {
         Ok(self
             .clone()
             .into_iter()
-            .enumerate()
             .par_bridge()
-            .filter_map(|(index, current)| {
-                current
-                    .map(|id| predicate(&id).then_some((index, id)))
-                    .transpose()
-            })
+            .filter_map(|current| current.map(|id| predicate(&id).then_some(id)).transpose())
             .collect::<Result<Vec<_>, _>>()?
             .into_iter()
-            .map(|(index, id)| {
-                id.0.parse::<u64>()
-                    .map_err(|error| SumByIdRangeError::Parse {
-                        index,
-                        source: error,
-                    })
-            })
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
+            .map(|id| id.to_u64())
             .sum::<u64>())
     }
 }
@@ -200,8 +188,6 @@ impl IdRange {
 enum SumByIdRangeError {
     #[error("Failed to iterate over id range: {0}")]
     Iterate(#[from] IterateIdRangeError),
-    #[error("Failed to parse id at index '{index}': {source}")]
-    Parse { index: usize, source: ParseIntError },
 }
 
 impl IntoIterator for IdRange {
@@ -276,18 +262,64 @@ enum ParseIdRangeError {
     ParseTo { value: String, source: ParseIdError },
 }
 
-#[derive(derive_more::Display, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-struct Id(String);
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+struct Id(Box<[char]>);
 
 impl Id {
     fn next(&self) -> Result<Self, NextIdError> {
-        Ok(Self(
-            self.0
-                .parse::<u64>()?
-                .checked_add(1)
-                .ok_or(NextIdError::Overflow)?
-                .to_string(),
-        ))
+        let mut next = self.0.clone();
+        let mut next_iter = next.iter_mut().rev();
+        let mut current = next_iter.next().expect("Should not be empty");
+        let mut carry_over = true;
+        let mut overflow = false;
+
+        while carry_over {
+            carry_over = false;
+            *current = match *current {
+                '0' => '1',
+                '1' => '2',
+                '2' => '3',
+                '3' => '4',
+                '4' => '5',
+                '5' => '6',
+                '6' => '7',
+                '7' => '8',
+                '8' => '9',
+                '9' => {
+                    carry_over = true;
+                    '0'
+                }
+                _ => unreachable!("All characters should be digits"),
+            };
+            if carry_over {
+                if let Some(next_current) = next_iter.next() {
+                    current = next_current;
+                } else {
+                    carry_over = false;
+                    overflow = true;
+                }
+            }
+        }
+        if overflow {
+            let mut new_next = Vec::with_capacity(next.len() + 1);
+            new_next.push('1');
+            new_next.extend_from_slice(&next);
+            next = new_next.into_boxed_slice();
+        }
+
+        Ok(Self(next))
+    }
+
+    fn starts_with_zero(&self) -> bool {
+        *self.0.first().expect("Should not be empty") == '0'
+    }
+
+    fn to_u64(&self) -> u64 {
+        let mut output = 0;
+        for (index, digit) in self.0.iter().rev().enumerate() {
+            output += (*digit as u64 - '0' as u64) * 10u64.pow(index as u32);
+        }
+        output
     }
 }
 
@@ -295,16 +327,17 @@ impl Id {
 enum NextIdError {
     #[error("Failed to parse internal value: {0}")]
     Parse(#[from] ParseIntError),
-    #[error("Failed to get next id as overflow has happened")]
-    Overflow,
 }
 
 impl FromStr for Id {
     type Err = ParseIdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.chars().all(char::is_numeric) {
-            Ok(Self(s.to_string()))
+        let chars = s.chars().collect::<Box<[_]>>();
+        if chars.is_empty() {
+            Err(ParseIdError::Empty)
+        } else if chars.iter().all(|character| character.is_numeric()) {
+            Ok(Self(chars))
         } else {
             Err(ParseIdError::NonNumeric)
         }
@@ -314,8 +347,16 @@ impl FromStr for Id {
 #[derive(thiserror::Error, Debug)]
 #[error("Failed to parse id: {0}")]
 enum ParseIdError {
+    #[error("String is empty")]
+    Empty,
     #[error("String contains non-numeric character")]
     NonNumeric,
+}
+
+impl Display for Id {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.iter().collect::<String>())
+    }
 }
 
 #[cfg(test)]
