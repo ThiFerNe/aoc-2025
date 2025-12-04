@@ -1,44 +1,29 @@
 use std::cmp::Ordering;
 use std::num::ParseIntError;
 use std::str::FromStr;
-#[cfg(feature = "internal_timings")]
-use std::time::Instant;
 
 fn main() {
-    #[cfg(feature = "internal_timings")]
-    let start = Instant::now();
-    #[cfg(feature = "part1")]
-    part_1();
-    #[cfg(feature = "part2")]
-    part_2();
-    #[cfg(feature = "internal_timings")]
-    let end = Instant::now();
-    #[cfg(feature = "internal_timings")]
-    println!("duration: {:?}", end.duration_since(start));
+    aoc_2025::aoc!(INPUT, part1, part2);
 }
 
+const INPUT: &str = include_str!("../input/input.day01");
+
 #[cfg(feature = "part1")]
-fn part_1() {
+fn part1(input: &str) -> u64 {
     // Took 33 minutes 2,24 seconds (excluding breaks of around 15 minutes because of cats)
-    let count = number_of_times_dial_pointing_at_0_after_rotations(
+    number_of_times_dial_pointing_at_0_after_rotations(
         &mut Dial::new(50, 99).expect("Should be correct values"),
-        &include_str!("../input/input.day01")
-            .parse()
-            .expect("Should parse fine"),
-    );
-    println!("The answer to part 1 is: {count}");
+        &input.parse().expect("Should parse fine"),
+    )
 }
 
 #[cfg(feature = "part2")]
-fn part_2() {
+fn part2(input: &str) -> u64 {
     // Took 11 minutes 7,26 seconds (again, excluding breaks of around 15 minutes because of cat)
-    let count = number_of_time_dial_pointing_at_0_at_any_time(
+    number_of_time_dial_pointing_at_0_at_any_time(
         &mut Dial::new(50, 99).expect("Should be correct values"),
-        &include_str!("../input/input.day01")
-            .parse()
-            .expect("Should parse fine"),
-    );
-    println!("The answer to part 2 is: {count}");
+        &input.parse().expect("Should parse fine"),
+    )
 }
 
 #[cfg(feature = "part1")]
@@ -232,14 +217,12 @@ L1
 L99
 R14
 L82";
-        let mut dial = Dial::new(50, 99).expect("Should be correct values");
 
         // Act
-        let rotations: Rotations = input.parse().expect("Should parse");
-        let count = number_of_times_dial_pointing_at_0_after_rotations(&mut dial, &rotations);
+        let part1 = part1(input);
 
         // Assert
-        assert_eq!(count, 3)
+        assert_eq!(part1, 3)
     }
 
     #[test]
@@ -255,13 +238,11 @@ L1
 L99
 R14
 L82";
-        let mut dial = Dial::new(50, 99).expect("Should be correct values");
 
         // Act
-        let rotations: Rotations = input.parse().expect("Should parse");
-        let count = number_of_time_dial_pointing_at_0_at_any_time(&mut dial, &rotations);
+        let part2 = part2(input);
 
         // Assert
-        assert_eq!(count, 6)
+        assert_eq!(part2, 6)
     }
 }

@@ -1,34 +1,16 @@
 use std::fmt::{Display, Formatter};
 use std::num::ParseIntError;
 use std::str::FromStr;
-#[cfg(feature = "internal_timings")]
-use std::time::Instant;
 
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelRefIterator, ParallelBridge, ParallelIterator,
 };
 
 fn main() {
-    #[cfg(feature = "internal_timings")]
-    let start = Instant::now();
-    #[cfg(any(feature = "part1", feature = "part2"))]
-    let input = include_str!("../input/input.day02");
-    #[cfg(feature = "part1")]
-    {
-        let part1 = part1(input);
-        println!("Solution to part 1: {part1}");
-    }
-    #[cfg(feature = "part2")]
-    {
-        let part2 = part2(input);
-        println!("Solution to part 1: {part2}");
-    }
-    #[cfg(feature = "internal_timings")]
-    {
-        let end = Instant::now();
-        println!("duration: {:?}", end.duration_since(start));
-    }
+    aoc_2025::aoc!(INPUT, part1, part2);
 }
+
+const INPUT: &str = include_str!("../input/input.day02");
 
 #[cfg(feature = "part1")]
 fn part1(input: &str) -> u64 {
@@ -381,9 +363,9 @@ mod tests {
         let input = "11-22,95-115,998-1012,1188511880-1188511890,222220-222224,1698522-1698528,446443-446449,38593856-38593862,565653-565659,824824821-824824827,2121212118-2121212124";
 
         // Act
-        let part1 = part2(input);
+        let part2 = part2(input);
 
         // Assert
-        assert_eq!(part1, 4174379265);
+        assert_eq!(part2, 4174379265);
     }
 }

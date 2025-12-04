@@ -24,6 +24,8 @@ For the full speed use `--release` after `cargo run` like `cargo run --release -
 
 Internal timings will be given when also adding the `internal_timings` feature, which is enabled on default.
 
+When giving `benchmark` as feature an internal benchmark is being done.
+
 ---
 
 *README.md created with the help
