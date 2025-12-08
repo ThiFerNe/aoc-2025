@@ -1,4 +1,6 @@
+#[cfg(feature = "part2")]
 use std::cmp::Ordering;
+#[cfg(feature = "part2")]
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
