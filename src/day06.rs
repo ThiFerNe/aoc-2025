@@ -113,6 +113,7 @@ impl Worksheet {
 enum ParseKind {
     #[default]
     TopToBottom,
+    #[allow(dead_code)]
     RightToLeft,
 }
 
