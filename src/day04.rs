@@ -13,16 +13,18 @@ fn part1(input: &str) -> u64 {
     count_of_paper_rolls_accessible_by_a_forklift(input.parse().expect("Should parse department"))
 }
 
-#[cfg(feature = "part1")]
+#[cfg(feature = "part2")]
 fn part2(input: &str) -> u64 {
     // Took 20 minutes 23,20 seconds
     count_of_paper_rolls_removable_repeatedly(input.parse().expect("Should parse department"))
 }
 
+#[cfg(feature = "part1")]
 fn count_of_paper_rolls_accessible_by_a_forklift(mut department: PrintingDepartment) -> u64 {
     department.mark_removable()
 }
 
+#[cfg(feature = "part2")]
 fn count_of_paper_rolls_removable_repeatedly(mut department: PrintingDepartment) -> u64 {
     let mut count = 0;
     loop {
@@ -59,6 +61,7 @@ impl PrintingDepartment {
         count
     }
 
+    #[cfg(feature = "part2")]
     fn remove_removable(&mut self) -> u64 {
         let mut count = 0;
         for y in 0..self.grid.len() {
