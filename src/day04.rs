@@ -1,7 +1,8 @@
+use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
 fn main() {
-    aoc_2025::aoc!(INPUT, part1);
+    aoc_2025::aoc!(INPUT, part1, part2);
 }
 
 const INPUT: &str = include_str!("../input/input.day04");
@@ -12,23 +13,71 @@ fn part1(input: &str) -> u64 {
     count_of_paper_rolls_accessible_by_a_forklift(input.parse().expect("Should parse department"))
 }
 
-fn count_of_paper_rolls_accessible_by_a_forklift(department: PrintingDepartment) -> u64 {
+#[cfg(feature = "part1")]
+fn part2(input: &str) -> u64 {
+    // Took 20 minutes 23,20 seconds
+    count_of_paper_rolls_removable_repeatedly(input.parse().expect("Should parse department"))
+}
+
+fn count_of_paper_rolls_accessible_by_a_forklift(mut department: PrintingDepartment) -> u64 {
+    department.mark_removable()
+}
+
+fn count_of_paper_rolls_removable_repeatedly(mut department: PrintingDepartment) -> u64 {
     let mut count = 0;
-    for y in 0..department.grid.len() {
-        for x in 0..department.grid[y].len() {
-            if department.is_paper_roll(y, x) && department.count_neighbours(y, x) < 4 {
-                count += 1;
-            }
+    loop {
+        department.mark_removable();
+        let new_count = department.remove_removable();
+        if new_count == 0 {
+            break;
         }
+        count += new_count;
     }
     count
 }
 
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
 struct PrintingDepartment {
-    grid: Vec<Vec<Option<PaperRoll>>>,
+    grid: Vec<Vec<MaybePaperRoll>>,
 }
 
 impl PrintingDepartment {
+    fn mark_removable(&mut self) -> u64 {
+        let mut count = 0;
+        for y in 0..self.grid.len() {
+            for x in 0..self.grid[y].len() {
+                if self.is_paper_roll(y, x) {
+                    if self.count_neighbours(y, x) < 4 {
+                        self.grid[y][x] = MaybePaperRoll::Removable;
+                        count += 1;
+                    } else {
+                        self.grid[y][x] = MaybePaperRoll::Irremovable;
+                    }
+                }
+            }
+        }
+        count
+    }
+
+    fn remove_removable(&mut self) -> u64 {
+        let mut count = 0;
+        for y in 0..self.grid.len() {
+            for x in 0..self.grid[y].len() {
+                self.grid[y][x] = match self.grid[y][x] {
+                    MaybePaperRoll::MovementUnchecked | MaybePaperRoll::Irremovable => {
+                        MaybePaperRoll::MovementUnchecked
+                    }
+                    MaybePaperRoll::Removable => {
+                        count += 1;
+                        MaybePaperRoll::None
+                    }
+                    MaybePaperRoll::None => MaybePaperRoll::None,
+                };
+            }
+        }
+        count
+    }
+
     fn count_neighbours(&self, row_index: usize, column_index: usize) -> u64 {
         let mut count = 0;
         for check_row_relative_index in -1isize..=1 {
@@ -48,7 +97,10 @@ impl PrintingDepartment {
                 let is_neighbour = self
                     .grid
                     .get(check_row_index)
-                    .and_then(|row| row.get(check_column_index).map(|cell| cell.is_some()))
+                    .and_then(|row| {
+                        row.get(check_column_index)
+                            .map(MaybePaperRoll::is_paper_roll)
+                    })
                     .unwrap_or(false);
                 if is_neighbour {
                     count += 1;
@@ -61,8 +113,25 @@ impl PrintingDepartment {
     fn is_paper_roll(&self, row_index: usize, column_index: usize) -> bool {
         self.grid
             .get(row_index)
-            .and_then(|row| row.get(column_index).map(|cell| cell.is_some()))
+            .and_then(|row| row.get(column_index).map(MaybePaperRoll::is_paper_roll))
             .unwrap_or(false)
+    }
+}
+
+impl Display for PrintingDepartment {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for y in 0..self.grid.len() {
+            for x in 0..self.grid[y].len() {
+                match self.grid[y][x] {
+                    MaybePaperRoll::MovementUnchecked => write!(f, "@")?,
+                    MaybePaperRoll::Removable => write!(f, "X")?,
+                    MaybePaperRoll::Irremovable => write!(f, "O")?,
+                    MaybePaperRoll::None => write!(f, ".")?,
+                }
+            }
+            writeln!(f)?;
+        }
+        Ok(())
     }
 }
 
@@ -82,8 +151,8 @@ impl FromStr for PrintingDepartment {
                 row.chars()
                     .enumerate()
                     .map(move |(column_index, cell)| match cell {
-                        '.' => Ok(None),
-                        '@' => Ok(Some(PaperRoll)),
+                        '.' => Ok(MaybePaperRoll::None),
+                        '@' => Ok(MaybePaperRoll::MovementUnchecked),
                         _ => Err(ParsePrintingDepartmentError::Unknown {
                             value: cell,
                             row: row_index,
@@ -124,7 +193,22 @@ enum ParsePrintingDepartmentError {
     },
 }
 
-struct PaperRoll;
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+enum MaybePaperRoll {
+    MovementUnchecked,
+    Removable,
+    Irremovable,
+    None,
+}
+
+impl MaybePaperRoll {
+    fn is_paper_roll(&self) -> bool {
+        matches!(
+            self,
+            Self::MovementUnchecked | Self::Removable | Self::Irremovable
+        )
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -149,5 +233,26 @@ mod tests {
 
         // Assert
         assert_eq!(part1, 13);
+    }
+
+    #[test]
+    fn test_part2() {
+        // Arrange
+        let input = "..@@.@@@@.
+@@@.@.@.@@
+@@@@@.@.@@
+@.@@@@..@.
+@@.@@@@.@@
+.@@@@@@@.@
+.@.@.@.@@@
+@.@@@.@@@@
+.@@@@@@@@.
+@.@.@@@.@.";
+
+        // Act
+        let part2 = part2(input);
+
+        // Assert
+        assert_eq!(part2, 43);
     }
 }
