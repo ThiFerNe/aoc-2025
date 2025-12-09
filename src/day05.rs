@@ -2,7 +2,7 @@ use std::num::ParseIntError;
 use std::str::FromStr;
 
 fn main() {
-    aoc_2025::aoc!(INPUT, part1);
+    aoc_2025::aoc!(INPUT, part1, part2);
 }
 
 const INPUT: &str = include_str!("../input/input.day05");
@@ -13,6 +13,14 @@ fn part1(input: &str) -> u64 {
     Database::from_str(input)
         .expect("Should parse fine")
         .count_fresh_available_ingredients()
+}
+
+#[cfg(feature = "part2")]
+fn part2(input: &str) -> u64 {
+    // Took 15 minutes 51 seconds
+    Database::from_str(input)
+        .expect("Should parse fine")
+        .count_unique_fresh_ingredient_ids()
 }
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
@@ -33,6 +41,31 @@ impl Database {
                     })
             })
             .count() as u64
+    }
+
+    fn count_unique_fresh_ingredient_ids(&self) -> u64 {
+        let mut output = self.fresh_ingredient_ranges.to_vec();
+        loop {
+            let previous = output.len();
+            output = output.into_iter().fold(Vec::new(), |mut acc, value| {
+                let mut found = false;
+                for range in &mut acc {
+                    if let Some(merged) = range.merge(&value) {
+                        *range = merged;
+                        found = true;
+                        break;
+                    }
+                }
+                if !found {
+                    acc.push(value);
+                }
+                acc
+            });
+            if previous == output.len() {
+                break;
+            }
+        }
+        output.iter().map(|range| range.len()).sum::<u64>()
     }
 }
 
@@ -92,6 +125,21 @@ struct IngredientIdRange {
 impl IngredientIdRange {
     fn contains(&self, id: &IngredientId) -> bool {
         self.from <= *id && *id <= self.inclusive_to
+    }
+
+    fn merge(&self, other: &Self) -> Option<Self> {
+        if self.from <= other.inclusive_to && self.inclusive_to >= other.from {
+            Some(Self {
+                from: self.from.min(other.from),
+                inclusive_to: self.inclusive_to.max(other.inclusive_to),
+            })
+        } else {
+            None
+        }
+    }
+
+    fn len(&self) -> u64 {
+        self.inclusive_to.0 - self.from.0 + 1
     }
 }
 
@@ -162,5 +210,20 @@ mod tests {
 
         // Assert
         assert_eq!(part1, 3);
+    }
+
+    #[test]
+    fn test_part2() {
+        // Arrange
+        let input = "3-5
+10-14
+16-20
+12-18";
+
+        // Act
+        let part2 = part2(input);
+
+        // Assert
+        assert_eq!(part2, 14);
     }
 }
