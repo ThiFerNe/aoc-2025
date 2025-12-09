@@ -30,6 +30,7 @@ struct Database {
 }
 
 impl Database {
+    #[cfg(feature = "part1")]
     fn count_fresh_available_ingredients(&self) -> u64 {
         self.available_ingredients
             .iter()
@@ -43,6 +44,7 @@ impl Database {
             .count() as u64
     }
 
+    #[cfg(feature = "part2")]
     fn count_unique_fresh_ingredient_ids(&self) -> u64 {
         let mut output = self.fresh_ingredient_ranges.to_vec();
         loop {
@@ -123,10 +125,12 @@ struct IngredientIdRange {
 }
 
 impl IngredientIdRange {
+    #[cfg(feature = "part1")]
     fn contains(&self, id: &IngredientId) -> bool {
         self.from <= *id && *id <= self.inclusive_to
     }
 
+    #[cfg(feature = "part2")]
     fn merge(&self, other: &Self) -> Option<Self> {
         if self.from <= other.inclusive_to && self.inclusive_to >= other.from {
             Some(Self {
@@ -138,6 +142,7 @@ impl IngredientIdRange {
         }
     }
 
+    #[cfg(feature = "part2")]
     fn len(&self) -> u64 {
         self.inclusive_to.0 - self.from.0 + 1
     }
