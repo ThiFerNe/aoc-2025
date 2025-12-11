@@ -5,18 +5,30 @@ use std::str::FromStr;
 use itertools::Itertools;
 
 fn main() {
-    aoc_2025::aoc!(INPUT, part1);
+    aoc_2025::aoc!(INPUT, part1, part2);
 }
 
 const INPUT: &str = include_str!("../input/input.day08");
 
+#[cfg(feature = "part1")]
 fn part1(input: &str) -> u64 {
     // Took 1 hour 3 minutes 42,82 seconds
     product_of_size_of_largets_circuits(Playground::from_str(input).expect("Should parse"), 1000)
 }
 
+#[cfg(feature = "part2")]
+fn part2(input: &str) -> u64 {
+    // Took 26 minutes 25,34 seconds
+    product_of_last_pair_to_connect_to_single_circuit(
+        Playground::from_str(input).expect("Should parse"),
+    )
+}
+
+#[cfg(feature = "part1")]
 fn product_of_size_of_largets_circuits(playground: Playground, connect_count: usize) -> u64 {
-    let mut connected_circuits = playground.connect_closest(connect_count);
+    let mut connected_circuits = playground
+        .connect_closest(ConnectCondition::LessThanNPairsConnected(connect_count))
+        .0;
     connected_circuits.sort_by_key(|circuit| circuit.0.len());
     connected_circuits
         .into_iter()
@@ -26,11 +38,26 @@ fn product_of_size_of_largets_circuits(playground: Playground, connect_count: us
         .product()
 }
 
+#[cfg(feature = "part2")]
+fn product_of_last_pair_to_connect_to_single_circuit(playground: Playground) -> u64 {
+    let (_, last_connected) = playground.connect_closest(ConnectCondition::NotYetSingleCircuit);
+    (last_connected.0.0.x * last_connected.0.1.x) as u64
+}
+
 #[derive(Clone, Eq, PartialEq, Debug)]
 struct Playground(Box<[JunctionBox]>);
 
 impl Playground {
-    fn connect_closest(&self, count: usize) -> Box<[Circuit]> {
+    fn connect_closest(&self, until: ConnectCondition) -> (Box<[Circuit]>, LastJunctionBoxPair) {
+        #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+        struct JunctionBoxPair {
+            first_index: usize,
+            second_index: usize,
+        }
+
+        #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+        struct JunctionBoxPairDistance(u64);
+
         let mut pair_distances: HashMap<JunctionBoxPair, JunctionBoxPairDistance> = HashMap::new();
         for first_index in 0..self.0.len() {
             for second_index in 0..self.0.len() {
@@ -46,21 +73,24 @@ impl Playground {
                 });
             }
         }
+        let mut pair_distances = pair_distances.into_iter().collect::<Vec<_>>();
+        pair_distances.sort_by_key(|a| a.1);
+
         let mut circuits = (0..self.0.len())
             .map(|index| vec![index])
             .collect::<Vec<_>>();
-        let relevant_pairs = pair_distances
-            .into_iter()
-            .sorted_by_key(|a| a.1)
-            .take(count);
-        for (pair, _) in relevant_pairs {
+
+        let mut pair_index = 0;
+        let last_pair = loop {
+            let current_pair = pair_distances[pair_index].0;
+
             let first_circuit_index = circuits
                 .iter()
-                .position(|circuit| circuit.contains(&pair.first_index))
+                .position(|circuit| circuit.contains(&current_pair.first_index))
                 .expect("Should find junction box in indices");
             let second_circuit_index = circuits
                 .iter()
-                .position(|circuit| circuit.contains(&pair.second_index))
+                .position(|circuit| circuit.contains(&current_pair.second_index))
                 .expect("Should find junction box in indices");
             if first_circuit_index != second_circuit_index {
                 let new_circuit = circuits[first_circuit_index]
@@ -70,15 +100,40 @@ impl Playground {
                     .unique()
                     .collect::<Vec<_>>();
                 circuits.retain(|circuit| {
-                    !circuit.contains(&pair.first_index) && !circuit.contains(&pair.second_index)
+                    !circuit.contains(&current_pair.first_index)
+                        && !circuit.contains(&current_pair.second_index)
                 });
                 circuits.push(new_circuit);
             }
-        }
-        circuits
-            .into_iter()
-            .map(|circuit| Circuit(circuit.into_iter().map(|index| self.0[index]).collect()))
-            .collect()
+
+            match until {
+                #[cfg(feature = "part1")]
+                ConnectCondition::LessThanNPairsConnected(n) => {
+                    if (pair_index + 1) >= n {
+                        break current_pair;
+                    }
+                }
+                #[cfg(feature = "part2")]
+                ConnectCondition::NotYetSingleCircuit => {
+                    if circuits.len() <= 1 {
+                        break current_pair;
+                    }
+                }
+            }
+
+            pair_index += 1;
+        };
+
+        (
+            circuits
+                .into_iter()
+                .map(|circuit| Circuit(circuit.into_iter().map(|index| self.0[index]).collect()))
+                .collect(),
+            LastJunctionBoxPair((
+                self.0[last_pair.first_index],
+                self.0[last_pair.second_index],
+            )),
+        )
     }
 }
 
@@ -139,17 +194,19 @@ enum ParseJunctionBoxError {
     ParseCoordinate(#[from] ParseIntError),
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-struct JunctionBoxPair {
-    first_index: usize,
-    second_index: usize,
-}
-
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-struct JunctionBoxPairDistance(u64);
+enum ConnectCondition {
+    #[cfg(feature = "part1")]
+    LessThanNPairsConnected(usize),
+    #[cfg(feature = "part2")]
+    NotYetSingleCircuit,
+}
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 struct Circuit(Box<[JunctionBox]>);
+
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+struct LastJunctionBoxPair((JunctionBox, JunctionBox));
 
 #[cfg(test)]
 mod tests {
@@ -187,5 +244,38 @@ mod tests {
 
         // Assert
         assert_eq!(part1, 40);
+    }
+
+    #[test]
+    fn test_part2() {
+        // Arrange
+        let input = "162,817,812
+57,618,57
+906,360,560
+592,479,940
+352,342,300
+466,668,158
+542,29,236
+431,825,988
+739,650,466
+52,470,668
+216,146,977
+819,987,18
+117,168,530
+805,96,715
+346,949,466
+970,615,88
+941,993,340
+862,61,35
+984,92,344
+425,690,689";
+
+        // Act
+        let part2 = product_of_last_pair_to_connect_to_single_circuit(
+            Playground::from_str(input).expect("Should parse"),
+        );
+
+        // Assert
+        assert_eq!(part2, 25272);
     }
 }
