@@ -26,6 +26,23 @@ Internal timings will be given when also adding the `internal_timings` feature, 
 
 When giving `benchmark` as feature an internal benchmark is being done.
 
+## Develop The Project
+
+Before developing "Advent Of Code 2025" you need:
+
+- Rust Toolchain, see <https://rust-lang.org/tools/install/> (currently using `1.91.1`)
+- cargo deny, see <https://crates.io/crates/cargo-deny> (currently `0.18.8`)
+    - with `cargo install --locked --force cargo-deny@0.18.8`
+
+### Git Hook
+
+There are git hooks provided inside [githooks/](./githooks/.), which can ease your git life.
+
+To install them, configure the full folder of git hooks with for example
+`git config --local core.hooksPath githooks/`.
+To install one of them, create a symbolic link at for example [.git/hooks/pre-commit](./.git/hooks/pre-commit) pointing
+to `../../githooks/pre-commit`.
+
 ---
 
 *README.md created with the help
