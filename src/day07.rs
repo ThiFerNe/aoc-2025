@@ -10,7 +10,7 @@ const INPUT: &str = include_str!("../input/input.day07");
 #[cfg(feature = "part1")]
 fn part1(input: &str) -> u64 {
     // Took 34 minutes 35,81 seconds
-    TachyonManifold::parse(input, TachyonManifoldKind::Classical)
+    TachyonManifold::parse(input)
         .expect("Should parse")
         .run_tachyon_beam()
         .split_count()
@@ -19,7 +19,7 @@ fn part1(input: &str) -> u64 {
 #[cfg(feature = "part2")]
 fn part2(input: &str) -> u64 {
     // Took 19 minutes 4,20 seconds
-    TachyonManifold::parse(input, TachyonManifoldKind::Quantum)
+    TachyonManifold::parse(input)
         .expect("Should parse")
         .run_tachyon_beam()
         .timelines_count()
@@ -27,24 +27,21 @@ fn part2(input: &str) -> u64 {
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 struct TachyonManifold {
-    kind: TachyonManifoldKind,
     area: Vec<Vec<Field>>,
     split_count: u64,
 }
 
 impl TachyonManifold {
-    fn parse(s: &str, kind: TachyonManifoldKind) -> Result<Self, ParseTachyonManifoldError> {
+    fn parse(s: &str) -> Result<Self, ParseTachyonManifoldError> {
         let mut lines_iter = s.lines();
         let Some(first_line) = lines_iter.next() else {
             return Ok(Self {
-                kind,
                 area: Vec::new(),
                 split_count: 0,
             });
         };
         let expected_columns = first_line.len();
         Ok(Self {
-            kind,
             area: once(first_line)
                 .chain(lines_iter)
                 .map(|line| {
@@ -137,10 +134,12 @@ impl TachyonManifold {
         self
     }
 
+    #[cfg(feature = "part1")]
     fn split_count(&self) -> u64 {
         self.split_count
     }
 
+    #[cfg(feature = "part2")]
     fn timelines_count(&self) -> u64 {
         let Some(last_row) = self.area.last() else {
             return 0;
@@ -177,12 +176,6 @@ impl Display for TachyonManifold {
         }
         Ok(())
     }
-}
-
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-enum TachyonManifoldKind {
-    Classical,
-    Quantum,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
