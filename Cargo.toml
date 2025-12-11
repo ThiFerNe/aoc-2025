@@ -37,6 +37,10 @@ path = "src/day06.rs"
 name = "day07"
 path = "src/day07.rs"
 
+[[bin]]
+name = "day08"
+path = "src/day08.rs"
+
 [features]
 default = ["part1", "part2", "internal_timings"]
 part1 = []
