@@ -41,6 +41,10 @@ path = "src/day07.rs"
 name = "day08"
 path = "src/day08.rs"
 
+[[bin]]
+name = "day09"
+path = "src/day09.rs"
+
 [features]
 default = ["part1", "part2", "internal_timings"]
 part1 = []
@@ -49,7 +53,6 @@ internal_timings = []
 benchmark = []
 
 [dependencies]
-derive_more = { version = "2", features = ["display"] }
 itertools = "0.14"
 rayon = "1"
 thiserror = "2"
