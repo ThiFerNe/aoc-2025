@@ -220,16 +220,7 @@ mod tests {
     #[test]
     fn test_part1() {
         // Arrange
-        let input = "..@@.@@@@.
-@@@.@.@.@@
-@@@@@.@.@@
-@.@@@@..@.
-@@.@@@@.@@
-.@@@@@@@.@
-.@.@.@.@@@
-@.@@@.@@@@
-.@@@@@@@@.
-@.@.@@@.@.";
+        let input = include_str!("../input/example.day04");
 
         // Act
         let part1 = part1(input);
@@ -241,16 +232,7 @@ mod tests {
     #[test]
     fn test_part2() {
         // Arrange
-        let input = "..@@.@@@@.
-@@@.@.@.@@
-@@@@@.@.@@
-@.@@@@..@.
-@@.@@@@.@@
-.@@@@@@@.@
-.@.@.@.@@@
-@.@@@.@@@@
-.@@@@@@@@.
-@.@.@@@.@.";
+        let input = include_str!("../input/example.day04");
 
         // Act
         let part2 = part2(input);

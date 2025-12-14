@@ -198,17 +198,7 @@ mod tests {
     #[test]
     fn test_part1() {
         // Arrange
-        let input = "3-5
-10-14
-16-20
-12-18
-
-1
-5
-8
-11
-17
-32";
+        let input = include_str!("../input/example.day05");
 
         // Act
         let part1 = part1(input);
@@ -220,10 +210,7 @@ mod tests {
     #[test]
     fn test_part2() {
         // Arrange
-        let input = "3-5
-10-14
-16-20
-12-18";
+        let input = include_str!("../input/example.day05");
 
         // Act
         let part2 = part2(input);
