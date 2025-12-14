@@ -1,15 +1,23 @@
-use crate::count::{bounded, bounded_inclusive};
-use crate::solver::{EquationsCount, SystemOfLinearEquations, VariablesCount};
-use itertools::Itertools;
+#[cfg(feature = "part1")]
 use std::cmp::Ordering;
+#[cfg(feature = "part1")]
 use std::collections::{BinaryHeap, HashSet};
-use std::fmt::{Display, Formatter};
+#[cfg(feature = "part1")]
 use std::hash::{Hash, Hasher};
-use std::iter::once;
 use std::num::ParseIntError;
+#[cfg(feature = "part1")]
 use std::rc::Rc;
 use std::str::FromStr;
-use std::time::{Duration, Instant};
+
+#[cfg(feature = "part2")]
+use itertools::Itertools;
+use rayon::iter::IntoParallelRefIterator;
+use rayon::iter::ParallelIterator;
+
+#[cfg(feature = "part2")]
+use crate::count::bounded_inclusive;
+#[cfg(feature = "part2")]
+use crate::solver::{EquationsCount, SystemOfLinearEquations, VariablesCount};
 
 fn main() {
     aoc_2025::aoc!(INPUT, part1, part2);
@@ -33,10 +41,11 @@ fn part2(input: &str) -> u64 {
     )
 }
 
+#[cfg(feature = "part1")]
 fn determine_fewest_button_presses_to_configure_indicator_lights(manual: Manual) -> u64 {
     manual
         .0
-        .iter()
+        .par_iter()
         .map(|machine_description| {
             #[derive(Debug, Clone)]
             struct State {
@@ -46,6 +55,7 @@ fn determine_fewest_button_presses_to_configure_indicator_lights(manual: Manual)
                 // heuristic_distance_to_target: u64,
             }
             impl State {
+                #[cfg(feature = "part1")]
                 fn new(
                     state: Box<[IndicatorLightState]>,
                     distance_to_start: u64,
@@ -59,6 +69,7 @@ fn determine_fewest_button_presses_to_configure_indicator_lights(manual: Manual)
                     }
                 }
 
+                #[cfg(feature = "part1")]
                 fn new_predecessor(
                     state: Box<[IndicatorLightState]>,
                     predecessor: Rc<State>,
@@ -73,6 +84,7 @@ fn determine_fewest_button_presses_to_configure_indicator_lights(manual: Manual)
                     }
                 }
 
+                #[cfg(feature = "part1")]
                 fn heuristic_path_length(&self) -> u64 {
                     self.distance_to_start // + self.heuristic_distance_to_target
                 }
@@ -169,6 +181,7 @@ fn determine_fewest_button_presses_to_configure_indicator_lights(manual: Manual)
         .sum()
 }
 
+#[cfg(feature = "part2")]
 mod solver {
     /*
     Inspired by:
@@ -179,7 +192,7 @@ mod solver {
 
     use nnn::{NNNewType, nnn};
 
-    pub struct SystemOfLinearEquations<State: sealed::SOLE> {
+    pub struct SystemOfLinearEquations<State: sealed::SystemOfLinearEquationsState> {
         data: Vec<Vec<f64>>,
         state: State,
     }
@@ -339,7 +352,7 @@ mod solver {
         }
     }
 
-    fn maximum_value_str_length(data: &Vec<Vec<f64>>) -> usize {
+    fn maximum_value_str_length(data: &[Vec<f64>]) -> usize {
         data.iter()
             .flat_map(|row| row.iter().map(|value| value.to_string().len()))
             .max()
@@ -421,23 +434,26 @@ mod solver {
     pub struct VariableIndex(pub usize);
 
     mod sealed {
-        pub trait SOLE {}
+        pub trait SystemOfLinearEquationsState {}
     }
 
     pub struct Initial;
-    impl sealed::SOLE for Initial {}
+    impl sealed::SystemOfLinearEquationsState for Initial {}
 
     pub struct Eliminated {
         dependent_variables: Vec<VariableIndex>,
         independent_variables: Vec<VariableIndex>,
     }
-    impl sealed::SOLE for Eliminated {}
+    impl sealed::SystemOfLinearEquationsState for Eliminated {}
 }
 
+#[cfg(feature = "part2")]
 mod count {
-    use num_traits::{One, Zero};
     use std::ops::Add;
 
+    use num_traits::{One, Zero};
+
+    #[allow(dead_code)]
     pub fn bounded<T>(bounds: impl IntoIterator<Item = T>) -> BoundedIterator<T>
     where
         T: One + Zero + Add + PartialOrd + Clone,
@@ -499,29 +515,26 @@ mod count {
     }
 }
 
+#[cfg(feature = "part2")]
 fn determine_fewest_button_presses_to_configure_joltage_levels(manual: Manual) -> u64 {
-    let machine_count = manual.0.len();
     manual
         .0
-        .iter()
-        .enumerate()
-        .map(|(index, machine_description)| {
-            // TODO println!();
-            // TODO println!("MACHINE: #{index} / {machine_count}");
-
+        .par_iter()
+        .map(|machine_description| {
             let system = SystemOfLinearEquations::new_with_fn(
-                EquationsCount::try_from(machine_description.joltage_requirements.0.len()).unwrap(),
+                EquationsCount::try_from(machine_description.joltage_requirements.0.len())
+                    .expect("Should have at least one joltage requirement"),
                 VariablesCount::try_from(machine_description.button_wiring_schematics.len())
-                    .unwrap(),
+                    .expect("Should have at least one button wiring schematic"),
                 |joltage_index, button_index| {
                     if machine_description.button_wiring_schematics[button_index.0]
                         .0
                         .iter()
                         .any(|wiring_target| wiring_target.index == joltage_index.0)
                     {
-                        1.
+                        1.0
                     } else {
-                        0.
+                        0.0
                     }
                 },
                 |joltage_index| {
@@ -530,7 +543,6 @@ fn determine_fewest_button_presses_to_configure_joltage_levels(manual: Manual) -
             )
             .gaussian_elimination();
 
-            // TODO println!("{:?}", system.independent_variables());
             let maximum_presses_per_button = system
                 .independent_variables()
                 .iter()
@@ -544,11 +556,9 @@ fn determine_fewest_button_presses_to_configure_joltage_levels(manual: Manual) -
                         .max()
                 })
                 .collect::<Box<[_]>>();
-            // TODO println!("maximum_presses_per_button = {maximum_presses_per_button:?}");
 
             let solution = bounded_inclusive(maximum_presses_per_button)
                 .filter_map(|independents| {
-                    // TODO println!("{independents:?}");
                     let dependants = system.calculate_dependents(
                         &independents.iter().map(|v| *v as f64).collect::<Box<[_]>>(),
                     );
@@ -568,284 +578,17 @@ fn determine_fewest_button_presses_to_configure_joltage_levels(manual: Manual) -
                     let all = system
                         .independent_variables()
                         .iter()
-                        .zip(independents.into_iter())
-                        .chain(
-                            system
-                                .dependent_variables()
-                                .iter()
-                                .zip(dependants.into_iter()),
-                        )
+                        .zip(independents)
+                        .chain(system.dependent_variables().iter().zip(dependants))
                         .sorted_by_key(|(index, _)| index.0)
                         .collect::<Box<[_]>>();
-
-                    // TODO println!("{all:?}");
 
                     Some(all)
                 })
                 .min_by_key(|a| a.iter().map(|b| b.1).sum::<u64>())
                 .expect("Should get at least one");
 
-            // TODO println!("solution = {solution:?}");
-
             solution.iter().map(|b| b.1).sum::<u64>()
-        })
-        .sum()
-}
-
-fn determine_fewest_button_presses_to_configure_joltage_levels_c(manual: Manual) -> u64 {
-    manual
-        .0
-        .iter()
-        .enumerate()
-        .map(|(index, machine_description)| {
-            println!("MACHINE_DESCRIPTION #{index}");
-            let maximum_press_count = machine_description
-                .button_wiring_schematics
-                .iter()
-                .map(|button_wiring_schematic| {
-                    let mut joltage_auxiliary_calculation =
-                        vec![Joltage(0); machine_description.joltage_requirements.0.len()];
-                    fn is_under_or_equal(this: &[Joltage], that: &[Joltage]) -> bool {
-                        assert_eq!(this.len(), that.len());
-                        this.iter()
-                            .zip(that.iter())
-                            .all(|(this_joltage, that_joltage)| this_joltage.0 <= that_joltage.0)
-                    }
-                    let mut counter = 0u64;
-                    while is_under_or_equal(
-                        &joltage_auxiliary_calculation,
-                        &machine_description.joltage_requirements.0,
-                    ) {
-                        for button_wiring_schematic_index in &button_wiring_schematic.0 {
-                            joltage_auxiliary_calculation[button_wiring_schematic_index.index].0 +=
-                                1;
-                        }
-                        counter += 1;
-                    }
-                    counter
-                })
-                .collect::<Box<[_]>>();
-            println!("maximum_press_count={maximum_press_count:?}");
-
-            let mut fitting: Vec<Box<[u64]>> = Vec::new();
-            let mut current_press_combination =
-                vec![0; machine_description.button_wiring_schematics.len()];
-
-            let mut last = Instant::now();
-            'outer: loop {
-                if last.elapsed().as_secs_f64() > 2.0 {
-                    println!("current_press_combination={current_press_combination:?}");
-                    last = Instant::now();
-                }
-                let mut result_after_pressing =
-                    vec![Joltage(0); machine_description.joltage_requirements.0.len()];
-                for (index, count) in current_press_combination.iter().enumerate() {
-                    for _ in 0..*count {
-                        for wiring_target in &machine_description.button_wiring_schematics[index].0
-                        {
-                            result_after_pressing[wiring_target.index].0 += 1;
-                        }
-                    }
-                }
-
-                if &result_after_pressing[..] == &machine_description.joltage_requirements.0[..] {
-                    fitting.push(current_press_combination.clone().into_boxed_slice());
-                }
-
-                for index in 0..result_after_pressing.len() {
-                    if result_after_pressing[index].0
-                        > machine_description.joltage_requirements.0[index].0
-                    {
-                        machine_description
-                            .button_wiring_schematics
-                            .iter()
-                            .enumerate()
-                            .filter(|bws| bws.1.0.iter().any(|wt| wt.index == index))
-                            .for_each(|(index, _)| {
-                                current_press_combination[index] =
-                                    maximum_press_count[index].saturating_sub(1)
-                            });
-                    }
-                }
-
-                // Update Loop Variable
-                let mut check_index = current_press_combination.len() - 1;
-                current_press_combination[check_index] += 1;
-                while current_press_combination[check_index] > maximum_press_count[check_index] {
-                    current_press_combination[check_index] = 0;
-                    if check_index > 0 {
-                        current_press_combination[check_index - 1] += 1;
-                    } else {
-                        break 'outer;
-                    }
-                    check_index -= 1;
-                }
-            }
-
-            fitting
-                .into_iter()
-                .map(|variant| variant.into_iter().sum::<u64>())
-                .min()
-                .expect("Should find at least one")
-        })
-        .sum()
-}
-
-fn determine_fewest_button_presses_to_configure_joltage_levels_b(manual: Manual) -> u64 {
-    manual
-        .0
-        .iter()
-        .enumerate()
-        .map(|(index, machine_description)| {
-            println!("====> MACHINE_DESCRIPTION #{index}");
-            #[derive(Debug, Clone)]
-            struct State {
-                state: Box<[Joltage]>,
-                _predecessor: Option<Rc<State>>,
-                distance_to_start: u64,
-                heuristic_distance_to_target: u64,
-            }
-            impl State {
-                fn new(
-                    state: Box<[Joltage]>,
-                    distance_to_start: u64,
-                    heuristic_distance_to_target: u64,
-                ) -> Self {
-                    Self {
-                        state,
-                        _predecessor: None,
-                        distance_to_start,
-                        heuristic_distance_to_target,
-                    }
-                }
-
-                fn new_predecessor(
-                    state: Box<[Joltage]>,
-                    predecessor: Rc<State>,
-                    distance_to_start: u64,
-                    heuristic_distance_to_target: u64,
-                ) -> Self {
-                    Self {
-                        state,
-                        _predecessor: Some(predecessor),
-                        distance_to_start,
-                        heuristic_distance_to_target,
-                    }
-                }
-
-                fn heuristic_path_length(&self) -> u64 {
-                    /*self.distance_to_start + */
-                    self.heuristic_distance_to_target
-                }
-            }
-            impl PartialEq for State {
-                fn eq(&self, other: &Self) -> bool {
-                    self.state == other.state
-                }
-            }
-            impl Eq for State {}
-            impl Hash for State {
-                fn hash<H: Hasher>(&self, state: &mut H) {
-                    self.state.hash(state);
-                }
-            }
-            impl PartialOrd for State {
-                fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-                    Some(self.cmp(other))
-                }
-            }
-            impl Ord for State {
-                fn cmp(&self, other: &Self) -> Ordering {
-                    self.heuristic_path_length()
-                        .cmp(&other.heuristic_path_length())
-                        .reverse()
-                }
-            }
-
-            fn heuristic_distance(left: &[Joltage], right: &[Joltage]) -> u64 {
-                assert_eq!(left.len(), right.len());
-                left.iter()
-                    .zip(right.iter())
-                    .map(|(l, r)| l.0.abs_diff(r.0))
-                    .sum::<u64>()
-            }
-
-            let mut closed_states = HashSet::<Rc<State>>::new();
-            let mut open_states = BinaryHeap::<Rc<State>>::from([{
-                let state = vec![Joltage(0); machine_description.joltage_requirements.0.len()]
-                    .into_boxed_slice();
-                let heuristic_distance_to_target =
-                    heuristic_distance(&machine_description.joltage_requirements.0, &state);
-                Rc::new(State::new(state, 0, heuristic_distance_to_target))
-            }]);
-
-            let mut last_output = Instant::now();
-
-            while let Some(current_node) = open_states.pop() {
-                if last_output.elapsed() > Duration::from_secs_f64(2.0) {
-                    //println!("{}", current_node.heuristic_distance_to_target);
-                    println!(
-                        "closed_states:{} open_states:{} current_node:({}-{}):{:?}",
-                        closed_states.len(),
-                        open_states.len(),
-                        current_node.distance_to_start,
-                        current_node.heuristic_distance_to_target,
-                        current_node.state
-                    );
-                    //println!("T {:?}", machine_description.joltage_requirements.0);
-                    last_output = Instant::now();
-                }
-                closed_states.insert(Rc::clone(&current_node));
-                if current_node.state == machine_description.joltage_requirements.0 {
-                    break;
-                }
-                let successors = machine_description
-                    .button_wiring_schematics
-                    .iter()
-                    .map(|button_wiring_schematic| {
-                        let mut state = current_node.state.clone();
-                        for wiring_target in &button_wiring_schematic.0 {
-                            state[wiring_target.index].0 += 1;
-                        }
-                        let heuristic_distance_to_target =
-                            heuristic_distance(&machine_description.joltage_requirements.0, &state);
-                        Rc::new(State::new_predecessor(
-                            state,
-                            Rc::clone(&current_node),
-                            current_node.distance_to_start + 1,
-                            heuristic_distance_to_target,
-                        ))
-                    })
-                    .filter(|successor| {
-                        successor
-                            .state
-                            .iter()
-                            .zip(machine_description.joltage_requirements.0.iter())
-                            .all(|(left, right)| left.0 <= right.0)
-                    });
-                for successor in successors {
-                    if closed_states.contains(&successor) {
-                        continue;
-                    }
-                    if let Some(open_state) = open_states
-                        .iter()
-                        .find(|state| state.state == successor.state)
-                    {
-                        if open_state.distance_to_start > successor.distance_to_start {
-                            open_states.retain(|open_state| open_state.state != successor.state);
-                            open_states.push(successor);
-                        }
-                    } else {
-                        open_states.push(successor);
-                    }
-                }
-            }
-
-            closed_states
-                .iter()
-                .find(|s| s.state == machine_description.joltage_requirements.0)
-                .expect("Should find a way")
-                .distance_to_start
         })
         .sum()
 }
@@ -981,6 +724,7 @@ enum IndicatorLightState {
 }
 
 impl IndicatorLightState {
+    #[cfg(feature = "part1")]
     fn invert(&mut self) {
         *self = match self {
             IndicatorLightState::On => IndicatorLightState::Off,
