@@ -20,7 +20,7 @@ fn part1(input: &str) -> u64 {
         .iter()
         .map(|shape| (shape.width(), shape.length()))
         .reduce(|a, b| (a.0.max(b.0), a.1.max(b.1)))
-        .unwrap();
+        .expect("Should have at least one present shape");
     situation_summary
         .region_requirements
         .iter()
@@ -95,7 +95,7 @@ impl FromStr for SituationSummary {
         let (last, rest) = sections
             .split_last()
             .expect("Should have at least two sections");
-        println!("last:\n{last}");
+
         Ok(Self {
             presents_shapes: rest
                 .iter()
