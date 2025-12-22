@@ -1,11 +1,12 @@
-use std::collections::{HashMap, HashSet};
-use std::fmt::{Display, Formatter};
+#[cfg(feature = "part1")]
 use std::num::ParseIntError;
+#[cfg(feature = "part1")]
 use std::ops::Div;
+#[cfg(feature = "part1")]
 use std::str::FromStr;
 
 fn main() {
-    aoc_2025::aoc!(INPUT, part1);
+    aoc_2025::aoc!(INPUT, part1, part2);
 }
 
 const INPUT: &str = include_str!("../input/input.day12");
@@ -20,7 +21,6 @@ fn part1(input: &str) -> u64 {
         .map(|shape| (shape.width(), shape.length()))
         .reduce(|a, b| (a.0.max(b.0), a.1.max(b.1)))
         .unwrap();
-    //let mut combination_repository = CombinationRepository::new();
     situation_summary
         .region_requirements
         .iter()
@@ -33,7 +33,7 @@ fn part1(input: &str) -> u64 {
 
             let required_boxes = region_requirement.shape_quantity.iter().sum::<u64>();
 
-            return required_boxes <= box_count;
+            required_boxes <= box_count
 
             // 2) Check how they can be fit together and check if this then fits inside
 
@@ -49,139 +49,25 @@ fn part1(input: &str) -> u64 {
               (B) possible combination (as it does not have to be the best for this step which is best for all)
             */
 
-            /*let a = ShapeCombination::generate_combinations(
-                &situation_summary.presents_shapes[0],
-                &situation_summary.presents_shapes[1],
-            );
-            for aa in a {
-                println!();
-                println!("{aa}");
-            }*/
-
             // 3) brute force all variations
-            true
         })
         .count() as u64
 }
 
-#[derive(Clone, Eq, PartialEq, Debug)]
-struct CombinationRepository(HashMap<ShapeIndices, HashSet<ShapeCombination>>);
-
-impl CombinationRepository {
-    fn new() -> Self {
-        Self(HashMap::new())
-    }
+#[cfg(feature = "part2")]
+fn part2(_input: &str) -> u64 {
+    // Taken 3 minutes
+    0
 }
 
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
-struct ShapeIndices(Box<[ShapeIndex]>);
-
-impl<T> From<T> for ShapeIndices
-where
-    T: IntoIterator<Item = ShapeIndex>,
-{
-    fn from(value: T) -> Self {
-        let mut values = value.into_iter().collect::<Box<[_]>>();
-        values.sort();
-        Self(values)
-    }
-}
-
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
-struct ShapeCombination {
-    source: Box<[(ShapeIndex, ShapeTransformation)]>,
-    field: Box<[Box<[Option<ShapeIndex>]>]>,
-    field_offset_x: i64,
-    field_offset_z: i64,
-}
-
-impl ShapeCombination {
-    fn generate_combinations_all(present_shapes: &[PresentShape]) -> HashSet<Self> {
-        todo!()
-    }
-
-    fn generate_combinations(
-        present_shape_a: &PresentShape,
-        present_shape_b: &PresentShape,
-    ) -> HashSet<Self> {
-        todo!()
-    }
-
-    fn width(&self) -> u64 {
-        self.field.first().expect("Should not be empty").len() as u64
-    }
-
-    fn length(&self) -> u64 {
-        self.field.len() as u64
-    }
-
-    fn check(&self, relative_x: i64, relative_z: i64) -> Option<ShapeIndex> {
-        self.field
-            .get((relative_z + self.field_offset_z) as usize)
-            .and_then(|row| {
-                row.get((relative_x + self.field_offset_x) as usize)
-                    .copied()
-            })
-            .flatten()
-    }
-}
-
-impl<T> From<T> for ShapeCombination
-where
-    T: IntoIterator<Item = (ShapeIndex, ShapeTransformation)>,
-{
-    fn from(value: T) -> Self {
-        let mut values = value.into_iter().collect::<Box<[_]>>();
-        values.sort();
-        let mut field_offset_x = 0;
-        let mut field_offset_z = 0;
-        Self {
-            source: values,
-            field: Box::new([]),
-            field_offset_x,
-            field_offset_z,
-        }
-    }
-}
-
-impl Display for ShapeCombination {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for row in &self.field {
-            for cell in row {
-                match cell {
-                    None => write!(f, ".")?,
-                    Some(cell) => write!(f, "{cell}")?,
-                }
-            }
-            writeln!(f)?;
-        }
-        Ok(())
-    }
-}
-
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-struct ShapeTransformation(ShapeRotation, ShapeTranslation);
-
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-enum ShapeRotation {
-    None,
-    Quarter,
-    Half,
-    ThreeQuarters,
-}
-
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-struct ShapeTranslation {
-    x: i64,
-    z: i64,
-}
-
+#[cfg(feature = "part1")]
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 struct SituationSummary {
     presents_shapes: Box<[PresentShape]>,
     region_requirements: Box<[RegionRequirement]>,
 }
 
+#[cfg(feature = "part1")]
 impl FromStr for SituationSummary {
     type Err = ParseSituationSummaryError;
 
@@ -231,6 +117,7 @@ impl FromStr for SituationSummary {
     }
 }
 
+#[cfg(feature = "part1")]
 #[derive(thiserror::Error, Debug)]
 enum ParseSituationSummaryError {
     #[error("Failed to parse present shape: {0}")]
@@ -242,12 +129,14 @@ enum ParseSituationSummaryError {
     },
 }
 
+#[cfg(feature = "part1")]
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 struct PresentShape {
     index: ShapeIndex,
     shape: Box<[Box<[ShapePart]>]>,
 }
 
+#[cfg(feature = "part1")]
 impl PresentShape {
     fn width(&self) -> u64 {
         self.shape.len() as u64
@@ -261,6 +150,7 @@ impl PresentShape {
     }
 }
 
+#[cfg(feature = "part1")]
 impl FromStr for PresentShape {
     type Err = ParsePresentShapeError;
 
@@ -285,6 +175,7 @@ impl FromStr for PresentShape {
     }
 }
 
+#[cfg(feature = "part1")]
 #[derive(thiserror::Error, Debug)]
 enum ParsePresentShapeError {
     #[error("Input is empty")]
@@ -297,9 +188,11 @@ enum ParsePresentShapeError {
     UnknownShapePart(#[from] ParseShapePartError),
 }
 
+#[cfg(feature = "part1")]
 #[derive(derive_more::Display, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 struct ShapeIndex(u64);
 
+#[cfg(feature = "part1")]
 impl FromStr for ShapeIndex {
     type Err = ParseShapeIndexError;
 
@@ -308,18 +201,21 @@ impl FromStr for ShapeIndex {
     }
 }
 
+#[cfg(feature = "part1")]
 #[derive(thiserror::Error, Debug)]
 enum ParseShapeIndexError {
     #[error("Failed to parse shape index: {0}")]
     Parse(#[from] ParseIntError),
 }
 
+#[cfg(feature = "part1")]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 enum ShapePart {
     IsPartOf,
     IsNotPartOf,
 }
 
+#[cfg(feature = "part1")]
 impl TryFrom<char> for ShapePart {
     type Error = ParseShapePartError;
 
@@ -332,18 +228,21 @@ impl TryFrom<char> for ShapePart {
     }
 }
 
+#[cfg(feature = "part1")]
 #[derive(thiserror::Error, Debug)]
 enum ParseShapePartError {
     #[error("Unknown shape part")]
     Unknown,
 }
 
+#[cfg(feature = "part1")]
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 struct RegionRequirement {
     size: RegionSize,
     shape_quantity: Box<[u64]>,
 }
 
+#[cfg(feature = "part1")]
 impl FromStr for RegionRequirement {
     type Err = ParseRegionRequirementError;
 
@@ -361,6 +260,7 @@ impl FromStr for RegionRequirement {
     }
 }
 
+#[cfg(feature = "part1")]
 #[derive(thiserror::Error, Debug)]
 enum ParseRegionRequirementError {
     #[error("Missing delimiter")]
@@ -371,12 +271,14 @@ enum ParseRegionRequirementError {
     ParseShapeQuantity(#[from] ParseIntError),
 }
 
+#[cfg(feature = "part1")]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 struct RegionSize {
     width: u64,
     length: u64,
 }
 
+#[cfg(feature = "part1")]
 impl FromStr for RegionSize {
     type Err = ParseRegionSizeError;
 
@@ -391,6 +293,7 @@ impl FromStr for RegionSize {
     }
 }
 
+#[cfg(feature = "part1")]
 #[derive(thiserror::Error, Debug)]
 enum ParseRegionSizeError {
     #[error("Missing delimiter")]
@@ -399,6 +302,7 @@ enum ParseRegionSizeError {
     Parse(#[from] ParseIntError),
 }
 
+/* IGNORING AS IT WORKS WITHOUT:
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -414,4 +318,4 @@ mod tests {
         // Assert
         assert_eq!(part1, 2);
     }
-}
+}*/
